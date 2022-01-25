@@ -4,7 +4,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import axios from '../../utils/axios';
 import { FETCH_PRODUCT_ENDPOINT } from '../../utils/Constants';
 import { extractAllPrices, extractAllProducts } from '../../utils/Functions';
-import { IResponseType, IState } from '../../utils/Types';
+import { IProduct, IResponseType, IState, IPrice } from '../../utils/Types';
 import Table from 'react-bootstrap/Table';
 import Container from 'react-bootstrap/Container';
 import Row from 'react-bootstrap/Row';
@@ -12,8 +12,12 @@ import Modal from 'react-bootstrap/Modal';
 import { Loading } from '../Loading';
 import ProductListItem, { Inputs } from './ProductListItem';
 import { loadFromLocalStorage } from '../../utils/LocalStorage';
+import { useForm } from 'react-hook-form';
 
 export const ProductListings = () => {
+  const { register, handleSubmit, formState, reset } = useForm<Inputs>();
+  const { errors } = formState;
+  const [showAddProductModal, setShowAddProductModal] = useState(false);
   const dispatch = useDispatch();
   const [isFetching, setIsFetching] = useState(false);
   const [fetchingFailed, setFetchingFailed] = useState(false);
@@ -59,6 +63,36 @@ export const ProductListings = () => {
 
   const allProducts = useSelector((state: IState) => state.products);
   const allPrices = useSelector((state: IState) => state.prices);
+  const lastPriceIdFromState = useSelector(
+    (state: IState) => state.lastPriceId
+  );
+  const lastProductIdFromState = useSelector(
+    (state: IState) => state.lastProductId
+  );
+
+  const handleAddNewProduct = (data: Inputs) => {
+    const { productName, productPrice } = data;
+    const newProduct: IProduct = {
+      id: lastProductIdFromState + 1,
+      name: productName,
+    };
+    const newProductPrice: IPrice = {
+      id: lastPriceIdFromState + 1,
+      price: +productPrice,
+      date: new Date().toISOString(),
+    };
+
+    dispatch(
+      actions.AddProduct(
+        newProduct,
+        { productId: newProduct.id, prices: [newProductPrice] },
+        newProduct.id,
+        newProductPrice.id
+      )
+    );
+    setShowAddProductModal(!showAddProductModal);
+    reset();
+  };
 
   return (
     <Container>
@@ -68,30 +102,104 @@ export const ProductListings = () => {
       </Row>
       <Row className="mt-5">
         <h2>Product Listings</h2>
+        {!fetchingFailed && (
+          <div className="float-end py-3">
+            <button
+              onClick={() => setShowAddProductModal(true)}
+              type="button"
+              className="btn btn-primary"
+            >
+              Add New Product
+            </button>
+          </div>
+        )}
       </Row>
+      {fetchingFailed ? (
+        <h2>Error Fetching Data</h2>
+      ) : (
+        <Row>
+          <Table striped bordered>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Name</th>
+                <th>Price</th>
+                <th colSpan={3}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {allProducts.map((product, index) => (
+                <ProductListItem
+                  product={product}
+                  prices={allPrices}
+                  index={index}
+                  key={product.id}
+                />
+              ))}
+            </tbody>
+          </Table>
+        </Row>
+      )}
 
-      <Row>
-        <Table striped bordered>
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Name</th>
-              <th>Price</th>
-              <th colSpan={3}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {allProducts.map((product, index) => (
-              <ProductListItem
-                product={product}
-                prices={allPrices}
-                index={index}
-                key={product.id}
+      <Modal
+        show={showAddProductModal}
+        onHide={() => setShowAddProductModal(false)}
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>Add New Product</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Row className="py-3">
+            <form onSubmit={handleSubmit(handleAddNewProduct)}>
+              <label htmlFor="productName" className="form-label">
+                Product Name
+              </label>
+              <input
+                {...register('productName', {
+                  required: 'required',
+                  minLength: {
+                    value: 3,
+                    message: 'Not a valid name',
+                  },
+                })}
+                className="form-control"
               />
-            ))}
-          </tbody>
-        </Table>
-      </Row>
+              <div>
+                {' '}
+                {errors.productName && (
+                  <small className="form-text text-danger">
+                    Enter a valid product name
+                  </small>
+                )}
+              </div>
+              <label htmlFor="productPrice" className="form-label mt-3">
+                Product Price
+              </label>
+              <input
+                {...register('productPrice', {
+                  required: 'required',
+                  pattern: {
+                    value: /^\d+(\.\d{1,2})?$/,
+                    message: 'Not a valid amount',
+                  },
+                  min: {
+                    value: 1,
+                    message: 'Not a valid price',
+                  },
+                })}
+                className={`form-control`}
+              />
+              {errors.productPrice && (
+                <small className="form-text text-danger">
+                  Enter a valid amount
+                </small>
+              )}
+
+              <input type="submit" className="btn btn-primary mt-3 float-end" />
+            </form>
+          </Row>
+        </Modal.Body>
+      </Modal>
     </Container>
   );
 };
