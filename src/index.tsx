@@ -8,7 +8,7 @@ import { Provider } from 'react-redux';
 import { store } from './redux/store';
 import { BrowserRouter } from 'react-router-dom';
 
-const MainApp = () => {
+export const MainApp = () => {
   return (
     <Provider store={store}>
       <BrowserRouter>
@@ -18,12 +18,7 @@ const MainApp = () => {
   );
 };
 
-ReactDOM.render(
-  <React.StrictMode>
-    <MainApp />
-  </React.StrictMode>,
-  document.getElementById('root')
-);
+ReactDOM.render(<MainApp />, document.getElementById('root'));
 
 // If you want to start measuring performance in your app, pass a function
 // to log results (for example: reportWebVitals(console.log))

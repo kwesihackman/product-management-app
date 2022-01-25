@@ -14,7 +14,7 @@ import ProductListItem, { Inputs } from './ProductListItem';
 import { loadFromLocalStorage } from '../../utils/LocalStorage';
 import { useForm } from 'react-hook-form';
 
-export const ProductListings = () => {
+const ProductListings = () => {
   const { register, handleSubmit, formState, reset } = useForm<Inputs>();
   const { errors } = formState;
   const [showAddProductModal, setShowAddProductModal] = useState(false);
@@ -203,3 +203,5 @@ export const ProductListings = () => {
     </Container>
   );
 };
+
+export default ProductListings;
