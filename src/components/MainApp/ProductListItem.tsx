@@ -2,12 +2,13 @@ import React, { useState, useMemo } from 'react';
 import { getCurrentPrice, sortPricesByDate } from '../../utils/Functions';
 import format from 'date-fns/format';
 import * as action from '../../redux/actions/actions';
-import { IProduct, IProductPrices } from '../../utils/Types';
+import { IPrice, IProduct, IProductPrices, IState } from '../../utils/Types';
 import Modal from 'react-bootstrap/Modal';
 import Table from 'react-bootstrap/Table';
 import Button from 'react-bootstrap/Button';
 import Row from 'react-bootstrap/Row';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
+import { useForm } from 'react-hook-form';
 
 type Props = {
   product: IProduct;
@@ -21,15 +22,22 @@ export type Inputs = {
 };
 
 const ProductListItem = ({ product, index, prices }: Props) => {
+  const { register, handleSubmit, formState, reset } = useForm<Inputs>();
+  const { errors } = formState;
   const dispatch = useDispatch();
+  const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const currentProductPrices = prices.find(
     (priceList) => priceList.productId === product.id
   );
+  const lastPriceIdFromState = useSelector(
+    (state: IState) => state.lastPriceId
+  );
   const currentProductPrice = getCurrentPrice(
     currentProductPrices!.prices
   ).price;
+  const currentProduct = product;
 
   const handleDeleteProduct = () => {
     console.log(product);
@@ -40,23 +48,42 @@ const ProductListItem = ({ product, index, prices }: Props) => {
     [currentProductPrices]
   );
 
+  const handleEditProduct = (data: Inputs) => {
+    const { productName, productPrice } = data;
+    if (productName !== product.name) {
+      currentProduct.name = productName;
+    }
+
+    if (+productPrice !== currentProductPrice) {
+      const newPrice: IPrice = {
+        id: lastPriceIdFromState + 1,
+        price: +productPrice,
+        date: new Date().toISOString(),
+      };
+      currentProductPrices!.prices.push(newPrice);
+      dispatch(
+        action.UpdateProduct(currentProduct, currentProductPrices!, newPrice.id)
+      );
+    }
+    setShowEditModal(!showEditModal);
+    reset();
+  };
+
   return (
     <React.Fragment>
       <tr>
         <td>{product.id}</td>
         <td>{product.name}</td>
         <td>{currentProductPrice.toFixed(2)}</td>
-        <td
-          role="button"
-          className="cursor-pointer"
-          onClick={() => setShowDetailsModal(true)}
-        >
+        <td role="button" onClick={() => setShowDetailsModal(true)}>
           View
         </td>
-        <td className="cursor-pointer">Edit</td>
+        <td onClick={() => setShowEditModal(true)} role="button">
+          Edit
+        </td>
         <td
           role="button"
-          className="text-danger cursor-pointer"
+          className="text-danger"
           onClick={() => setShowDeleteConfirmation(true)}
         >
           Delete
@@ -118,6 +145,61 @@ const ProductListItem = ({ product, index, prices }: Props) => {
             Close
           </Button>
         </Modal.Footer>
+      </Modal>
+
+      <Modal show={showEditModal} onHide={() => setShowEditModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>{`Update ${product.name}`}</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Row className="py-3">
+            <form onSubmit={handleSubmit(handleEditProduct)}>
+              <label htmlFor="productName" className="form-label">
+                Product Name
+              </label>
+              <input
+                defaultValue={`${product.name}`}
+                {...register('productName', {
+                  required: 'required',
+                  minLength: {
+                    value: 3,
+                    message: 'Not a valid name',
+                  },
+                })}
+                className="form-control"
+              />
+              {errors.productName && (
+                <small className="form-text text-danger">
+                  Enter a valid product name
+                </small>
+              )}
+              <label htmlFor="productPrice" className="form-label mt-3">
+                Current Price
+              </label>
+              <input
+                defaultValue={`${currentProductPrice}`}
+                {...register('productPrice', {
+                  pattern: {
+                    value: /^\d+(\.\d{1,2})?$/,
+                    message: 'Not a valid amount',
+                  },
+                  min: {
+                    value: 1,
+                    message: 'Not a valid price',
+                  },
+                })}
+                className={`form-control`}
+              />
+              {errors.productPrice && (
+                <small className="form-text text-danger">
+                  Enter a valid amount
+                </small>
+              )}
+
+              <input type="submit" className="btn btn-primary mt-3 float-end" />
+            </form>
+          </Row>
+        </Modal.Body>
       </Modal>
     </React.Fragment>
   );
