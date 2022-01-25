@@ -1,6 +1,6 @@
 {
-  "short_name": "React App",
-  "name": "Create React App Sample",
+  "short_name": "Product Management App",
+  "name": "React Application built with CRA and Typescript",
   "icons": [
     {
       "src": "favicon.ico",
